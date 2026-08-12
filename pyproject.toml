@@ -1,0 +1,17 @@
+[project]
+name = "lexd.html"
+version = "0.1.0"
+description = "lexd formalism, now in HTML"
+readme = "README.md"
+authors = [
+    { name = "David Huggins-Daines", email = "dhd@ecolingui.ca" }
+]
+requires-python = ">=3.10"
+dependencies = ["pyfoma>=1.1.1"]
+
+[project.scripts]
+lexd-html = "lexd_html:main"
+
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"
