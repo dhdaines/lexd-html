@@ -10,7 +10,7 @@ requires-python = ">=3.10"
 dependencies = ["pyfoma>=1.1.1"]
 
 [project.scripts]
-lexd-html = "lexd_html:main"
+lexd-html = "lexd_html.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.12.1,<0.13.0"]
