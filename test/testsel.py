@@ -1,6 +1,6 @@
 import json
 from pyfoma.lexd import parse_tag_selector, TagSelector
-from lexd_html import unparse_selector
+from lexd_html.unparse import unparse_selector
 
 examples = [
     "x",

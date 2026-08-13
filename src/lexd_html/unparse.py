@@ -1,3 +1,7 @@
+"""
+Convert text-format lexd to HTML
+"""
+
 import re
 from pyfoma.lexd import (
     parse_lexd,
@@ -16,7 +20,7 @@ from pyfoma.lexd import (
 
 def unparse_expr(pat: PatExpr) -> str:
     if isinstance(pat, Seq):
-        return " ".join(unparse_expr(part) for part in pat.parts)
+        return "(" + " ".join(unparse_expr(part) for part in pat.parts) + ")"
     if isinstance(pat, Alt):
         return "(" + " | ".join(unparse_expr(alt) for alt in pat.alts) + ")"
     if isinstance(pat, Ref):
@@ -36,9 +40,11 @@ def unparse_tokref(ref: TokRef) -> str:
                 # X(1):X(2)
                 col_in, col_out = ref.col
                 return f"{ref.name}({col_in}):{ref.name}({col_out}){selector}"
-            # We can strip out the columns later once we know the
-            # arity of the referent lexicon
-            out = f"{ref.name}{ref.col or ''}{selector}"
+            # If there's only one column then col will usually be None
+            if ref.col is not None:
+                out = f"{ref.name}({ref.col}){selector}"
+            else:
+                out = f"{ref.name}{selector}"
             match ref.side:
                 case "in":
                     return f"{out}:"
@@ -84,13 +90,13 @@ def unparse_selector(selector: TagSelector) -> str:
             for y in must:
                 if x != y:
                     corr[x].add(y)
-    print("corr:", corr)
-    print("alltags:", alltags)
+    #print("corr:", corr)
+    #print("alltags:", alltags)
     # Partition is all of the tags that do not co-occur in musts
     parts = set()
     for x, y in corr.items():
         parts.add(frozenset(alltags - y))
-    print("partition:", parts)
+    #print("partition:", parts)
     # FIXME: How to detect overlapping components?  This will fail if
     # there are any, e.g. ^[x,y],^[y,z]
 
@@ -98,7 +104,7 @@ def unparse_selector(selector: TagSelector) -> str:
     mustnots = set()
     for _, mustnot in selector.clauses:
         mustnots.update(mustnot)
-    print("mustnots:", mustnots)
+    #print("mustnots:", mustnots)
     outparts = []
     for p in parts:
         op = "^" if (p & mustnots) else "|"
@@ -106,22 +112,37 @@ def unparse_selector(selector: TagSelector) -> str:
     return f"[{','.join(outparts)}]"
 
 
+def unparse_top_pattern(pat: PatExpr) -> str:
+    if isinstance(pat, Seq):
+        return ("<tr>\n" + "\n".join(f"  <td>{unparse_expr(part)}</td>"
+                                     for part in pat.parts) + "\n</tr>")
+    return f"<tr><td>{unparse_expr(pat)}</td></tr>"
+
+
 def unparse_pattern(pat: PatExpr, name: str) -> list[str]:
     html = []
     html.append(f'<table data-section="pattern" data-name="{name}">')
+
     if isinstance(pat, Alt):
         for alt in pat.alts:
-            html.append(f"<tr><td>{unparse_expr(alt)}</td></tr>")
+            html.append(unparse_top_pattern(alt))
     else:
-        html.append(f"<tr><td>{unparse_expr(pat)}</td></tr>")
+        html.append(unparse_top_pattern(pat))
     html.append("</table>")
     return html
 
 
 def unparse_lexentry(self: LexEntry) -> str:
-    cols = " ".join(re.sub("[<>]", "|", c) for c in self.cols)  # FIXME: not quite
-    tags = f" [{','.join(self.tags)}]" if self.tags else ""
-    return cols + tags
+    html = ["<tr>"]
+    for c in self.cols:
+        # Replace <> to mark multichar symbols with |
+        ctext = re.sub(r"[<>]", "|", c)
+        html.append(f"\n<td>{ctext}</td>")
+    if self.tags:
+        # Possibly mark these with a data attribute
+        html.append(f"\n<td>[{','.join(self.tags)}]</td>")
+    html.append("\n</tr>")
+    return "".join(html)
 
 
 def unparse_lexdef(lex: LexiconDef, reverse_aliases: dict[str, set[str]]) -> list[str]:
@@ -131,7 +152,7 @@ def unparse_lexdef(lex: LexiconDef, reverse_aliases: dict[str, set[str]]) -> lis
         lextag += f' data-arity="{lex.arity}"'
     if lex.name in reverse_aliases:
         aliases = " ".join(reverse_aliases[lex.name])
-        lextag += f'data-aliases="{aliases}"'
+        lextag += f' data-aliases="{aliases}"'
     html.append(f"{lextag}>")
     for ent in lex.entries:
         html.append(unparse_lexentry(ent))
@@ -149,7 +170,7 @@ def from_lexd(grammar: str, name: str) -> str:
     html.append(f'<lexd-definition id="{name}">')
     html.append('<table data-section="patterns">')
     for expr in parsed.top_patterns:
-        html.append(f"<tr><td>{unparse_expr(expr)}</td></tr>")
+        html.append(unparse_top_pattern(expr))
     html.append("</table>")
     for name, pat in parsed.patterns.items():
         html.extend(unparse_pattern(pat, name))
