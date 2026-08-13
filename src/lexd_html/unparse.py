@@ -2,7 +2,7 @@
 Convert text-format lexd to HTML
 """
 
-import re
+from html import escape
 from pyfoma.lexd import (
     parse_lexd,
     PatExpr,
@@ -90,13 +90,13 @@ def unparse_selector(selector: TagSelector) -> str:
             for y in must:
                 if x != y:
                     corr[x].add(y)
-    #print("corr:", corr)
-    #print("alltags:", alltags)
+    # print("corr:", corr)
+    # print("alltags:", alltags)
     # Partition is all of the tags that do not co-occur in musts
     parts = set()
     for x, y in corr.items():
         parts.add(frozenset(alltags - y))
-    #print("partition:", parts)
+    # print("partition:", parts)
     # FIXME: How to detect overlapping components?  This will fail if
     # there are any, e.g. ^[x,y],^[y,z]
 
@@ -104,7 +104,7 @@ def unparse_selector(selector: TagSelector) -> str:
     mustnots = set()
     for _, mustnot in selector.clauses:
         mustnots.update(mustnot)
-    #print("mustnots:", mustnots)
+    # print("mustnots:", mustnots)
     outparts = []
     for p in parts:
         op = "^" if (p & mustnots) else "|"
@@ -114,14 +114,14 @@ def unparse_selector(selector: TagSelector) -> str:
 
 def unparse_top_pattern(pat: PatExpr) -> str:
     if isinstance(pat, Seq):
-        return ("<tr>\n" + "\n".join(f"  <td>{unparse_expr(part)}</td>"
+        return ("<tr>\n" + "\n".join(f"  <td>{escape(unparse_expr(part))}</td>"
                                      for part in pat.parts) + "\n</tr>")
-    return f"<tr><td>{unparse_expr(pat)}</td></tr>"
+    return f"<tr><td>{escape(unparse_expr(pat))}</td></tr>"
 
 
 def unparse_pattern(pat: PatExpr, name: str) -> list[str]:
     html = []
-    html.append(f'<table data-section="pattern" data-name="{name}">')
+    html.append(f'<table data-section="pattern" data-name="{escape(name, True)}">')
 
     if isinstance(pat, Alt):
         for alt in pat.alts:
@@ -135,23 +135,23 @@ def unparse_pattern(pat: PatExpr, name: str) -> list[str]:
 def unparse_lexentry(self: LexEntry) -> str:
     html = ["<tr>"]
     for c in self.cols:
-        # Replace <> to mark multichar symbols with |
-        ctext = re.sub(r"[<>]", "|", c)
+        ctext = escape(c)
         html.append(f"\n<td>{ctext}</td>")
     if self.tags:
+        ttext = escape(','.join(self.tags))
         # Possibly mark these with a data attribute
-        html.append(f"\n<td>[{','.join(self.tags)}]</td>")
+        html.append(f"\n<td>[{ttext}]</td>")
     html.append("\n</tr>")
     return "".join(html)
 
 
 def unparse_lexdef(lex: LexiconDef, reverse_aliases: dict[str, set[str]]) -> list[str]:
     html = []
-    lextag = f'<table data-section="lexicon" data-name="{lex.name}"'
+    lextag = f'<table data-section="lexicon" data-name="{escape(lex.name, True)}"'
     if lex.arity != 1:
         lextag += f' data-arity="{lex.arity}"'
     if lex.name in reverse_aliases:
-        aliases = " ".join(reverse_aliases[lex.name])
+        aliases = escape(" ".join(reverse_aliases[lex.name]), True)
         lextag += f' data-aliases="{aliases}"'
     html.append(f"{lextag}>")
     for ent in lex.entries:
@@ -167,7 +167,7 @@ def from_lexd(grammar: str, name: str) -> str:
     for k, v in parsed.aliases.items():
         reverse_aliases.setdefault(v, set()).add(k)
     html = []
-    html.append(f'<lexd-definition id="{name}">')
+    html.append(f'<lexd-definition id="{escape(name, True)}">')
     html.append('<table data-section="patterns">')
     for expr in parsed.top_patterns:
         html.append(unparse_top_pattern(expr))
@@ -177,4 +177,5 @@ def from_lexd(grammar: str, name: str) -> str:
     for lex in parsed.lexicons.values():
         html.extend(unparse_lexdef(lex, reverse_aliases))
     html.append("</lexd-definition>")
+    html.append('<script src="src/lexd-html.js"></script>')
     return "\n".join(html)
