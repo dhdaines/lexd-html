@@ -32,6 +32,5 @@ def main():
             print("\n".join(unparse_lexdef(p, {})))
 
 
-
 if __name__ == '__main__':
     main()
