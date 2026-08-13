@@ -48,9 +48,9 @@ def from_html(html: str) -> str:
         lines.append("")
     for t in root.findall("table[@data-section='lexicon']"):
         name = t.attrib["data-name"]
-        aliases = t.attrib.get("data-aliases")
-        if aliases is not None:
-            for tok in aliases.split(","):
+        attr = t.attrib.get("data-aliases")
+        if attr is not None:
+            for tok in attr.split(","):
                 aliases.append((tok.strip(), name))
         lines.append(f"LEXICON {t.attrib['data-name']}")
         # Each row is definitely a top-level pattern or reference

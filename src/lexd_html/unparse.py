@@ -177,5 +177,4 @@ def from_lexd(grammar: str, name: str) -> str:
     for lex in parsed.lexicons.values():
         html.extend(unparse_lexdef(lex, reverse_aliases))
     html.append("</lexd-definition>")
-    html.append('<script src="src/lexd-html.js"></script>')
     return "\n".join(html)
